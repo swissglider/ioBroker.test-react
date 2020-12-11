@@ -58,6 +58,8 @@
         "dataSource": "poll",
         "materialize": true,
         "materializeTab": true,
+        "messagebox": true,
+        "subscribe": "messagebox",
         "adminTab": {
             "singleton": true,
             "name": {
