@@ -1,6 +1,7 @@
+import { Box, Button } from 'grommet';
 import React, { Component } from 'react';
-
-import { DebugModeContext, DebugMode } from '../..';
+import { DebugModeContext } from '../../framework/context/DebugModeContext';
+import { MainPageWrapper } from '../../framework/utils/MainPageWrapper';
 
 interface Props {
     dummy?: string;
@@ -26,22 +27,18 @@ export class Page1 extends Component<Props, State> {
     }
 
     render(): JSX.Element {
-        const debuMode = this.context;
         return (
-            <DebugMode name="Page1">
-                {/* <DebugModeContextConsumer>{(context) => context}</DebugModeContextConsumer> */}
+            <MainPageWrapper pageName="page1">
                 <DebugModeContext.Consumer>
                     {(context) => (
-                        <div>
-                            <div>
-                                Context: {context.title} - DebuggMode: {context.debugMode.toString()}
-                            </div>
-                            <button onClick={() => context.changeTitle('Hallo Arvian')}>&uarr;</button>
-                            <button onClick={() => context.switchDebugMode()}>&uarr;</button>
-                        </div>
+                        <Box pad="xlarge">
+                            <Button onClick={() => context.switchDebugMode()}>
+                                Switch Debug Mode: {context.debugMode.toString()}
+                            </Button>
+                        </Box>
                     )}
                 </DebugModeContext.Consumer>
-            </DebugMode>
+            </MainPageWrapper>
         );
     }
 }

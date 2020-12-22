@@ -1,5 +1,17 @@
 {
     "test-react adapter settings": "Adapter settings for test-react",
     "option1": "option1",
-    "option2": "option2"
+    "option2": "option2",
+    "home": "Home",
+    "page1": "debug configuration",
+    "page2": "adapter configs",
+    "page3": "Object/State Tests",
+    "page4": "DnD Tests with Enums",
+    "page5": "DnD Tests with Enums",
+    "DialogSelectIDStatus": "open dialog",
+    "homeAreaData": "Area to Home",
+    "homeZoneData": "Zone to Home",
+    "areaFloorData": "Floor to Area",
+    "floorRoomData": "Room to Floor",
+    "newHome": "new home"
 }

@@ -22,7 +22,7 @@ export default class Header extends Component<Props, State> {
         };
     }
 
-    renderConfirmDialog() {
+    renderConfirmDialog(): JSX.Element | null {
         if (!this.state.confirmDialog) {
             return null;
         }
