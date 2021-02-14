@@ -1,0 +1,16 @@
+import { Avatar, styled } from '@material-ui/core';
+import React from 'react';
+
+const _ItemAvatar = styled(Avatar)({
+    width: '25px',
+    height: '25px',
+});
+
+export const ItemAvatar = (props: { icon: string | undefined; imgProps?: any }): JSX.Element => {
+    const icon =
+        props.icon && props.icon !== undefined
+            ? props.icon
+            : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAABmJLR0QA/wD/AP+gvaeTAAAFYklEQVRoge2Zb4gUZRzHP7/Z29PU3dm92T1NUOpFYkSWoPmiIPFFhmhFZUGRBmlgUpFIFpmCSX+EM1AJJHuh70QLMsoSOzIwSJEIEjIjo8w/t3N7z8yemOvu/HoxK9jd7t3uzZwR3PfNPMz8fs/v89159plnnoExjWlMQ0kaXSj4/mIJeAV0HjDxBjLVUz/IMRXdmrftz+sF1DXiGm8z8Maooo1QqryVz9obhg0s+P5i13jqGu+Ka/xXC4VLU28A39BMhUtTXWPWhUye9njeomGTXON3h0bMuhvA2JJqZtQ13uGB16zB4ToXQJPJPaOP1pqCtrbdteY9A6/VMcIkgPzEiedHE2ok6pw06UKtmRp4rS3uYudLpXx7JXg6EB4QdBZIDqgAZ1EOW1rd0tHR8UfcdQfNWq7xFCCXsRtOzfWkquJ6pbWCbmSI6VrBtYRnOtLpr0XkaqvAjfjqDa0RqeiVdgq6BRiP8KmgT0jCuiMoX0kF5SspReeAfCyQU+Vgr1f6rdeYpXHVj2VouX3eMkVXAr4ITzq2/WWdsBPnzp1b1j5h0i+gD4LOVmRvrzGWk8nsjYPj31Dh9KYt5pxyjacFY1Y2n2Ner9W6cFp1XFS+yEPL9f2ZwAygJ2fbHzWb59j2uwgngckdvj8/Kkf0/0iVeQAC3SISNJsmIqrwFYCqzo6KEdmIgAMQCOdGkPs7ACqRl0GRjagESQBRLreaK0F8s2YMd8Ryw6PkWs1VkSk1ip6oHNF/EdGzYUOnjSD39vCgp6NiRDaSFDkBoDCnlTxVtVDuA6BaPRqVI7KRVCplgBLQaYy5tdm8gjF3AQ7KecdxzkbliOM5shRIIZysVNrLLaYXEG7u6eu7OypHZCNWwGQAArpzuQl/NZvXmc3+AHIEICFyW2SOqB0EBD8CqMj9xWJxerN550ulfG1jg6rqr1E5IhvJZTJHgGOCzgqsxE+qOuzy/4zq+GQ1uAhME/Tb8O5EU/TniEiQ0GAh4VM65ZZKww6TlO/fSfgu9HMCHonKADG9j2SzWSPIIQCq+tSwCQEPAahwMJPJ9MXBENsSQSz2AIjwck9//5RGcRdKpU6EVQCWyP646sdmpCOdPorwGZCxKtXuRnFt1eAA4IB0O+n0d3HVj80IgFQqq8OW3jJE2EyAKsHzcdaO1Ui5vf3vsCVDzVxlgCCR8OOsHauR9nJ5HIBCf+MoLQMkryTa46wdqxESyYUAAoXGQXIJQJNXI7/eXq9YjJxRHd/reRsU/SA8o9sbxSqyC0BUP3SNWaeqsdyZSBt0xWJxemC1rVJ0hUAu7FC7nExmbaMcVbV6jb8N4YVa/YvALqlWdjqO8+dwNRvxjciI63lzUX0N5GEgUTt9XND1TiZzaDiYsI5ZIEiXwrWVbwX0ACLv5Wz72KgaKfj+DCvQ9xWufZ8oo+zDYnvOtr9vxsBAFX3/Xg10tcJjQHsN6ovAkjX5dPpU7EZ6jVmqsBvkJqAEsiNos7Zdt0MeSRf7+ycnKsFLoC8CKdDLAsudTGZfM3yDVG8nr1D0l7jGq9Q+AH3i+37LGw3Nyvd9xzX+/hpHtVD0lwzHV1eu8XzXeBq+L4AxJusaryfswH+7mWV6VKmquMbbXIPuMcZkIVyn1c55A3PqTL9yHKCtqssBrmKtAPKgRxw7tV5EWtoXHolERB07vQHkGyB/Feu5GtOztZDjA3MG7car6FZRFgj6jmtMAvRRAIEdrWyJRpWIBL3G7FBkvqCPu8YkQTcBWELXoPh6nRT6vE0ivDnasCORKpvyWXvjwPMNx3uP5y2ylDWEHx4HfbO7wSoBxyyhq8O2D/7HLGMa0/9S/wDcyY0gQYDZcAAAAABJRU5ErkJggg==';
+
+    return <_ItemAvatar src={icon} {...props.imgProps} />;
+};

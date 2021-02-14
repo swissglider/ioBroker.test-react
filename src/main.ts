@@ -5,6 +5,28 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from '@iobroker/adapter-core';
+import * as fs from 'fs';
+import * as util from 'util';
+import HomeContainerHelper from './adapter/homeContainer';
+
+// const log_file = fs.createWriteStream(__dirname + '/var/log/iobroker.log', { flags: 'w' });
+const log_file = fs.createWriteStream('/var/log/iobroker.log', { flags: 'w' });
+const log_stdout = process.stdout;
+
+console.log = function (...args: any) {
+    for (const ind in args) {
+        if (typeof args[ind] !== 'string') {
+            args[ind] = JSON.stringify(args, null, 4);
+        }
+    }
+    const output = args.join(',');
+    log_file.write(util.format(output) + '\r\n');
+    log_stdout.write(util.format(output) + '\r\n');
+};
+
+export interface I_HomeEnum {
+    id: string;
+}
 
 // Load your modules here, e.g.:
 // import * as fs from "fs";
@@ -15,8 +37,10 @@ class TestReact extends utils.Adapter {
             ...options,
             name: 'test-react',
         });
+        HomeContainerHelper.init(this);
         this.on('ready', this.onReady.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
+        this.on('objectChange', this.onObjectChange.bind(this));
         // this.on('objectChange', this.onObjectChange.bind(this));
         this.on('message', this.onMessage.bind(this));
         this.on('unload', this.onUnload.bind(this));
@@ -30,8 +54,8 @@ class TestReact extends utils.Adapter {
 
         // The adapters config (in the instance object everything under the attribute "native") is accessible via
         // this.config:
-        this.log.info('config option1: ' + this.config.option1);
-        this.log.info('config option2: ' + this.config.option2);
+        this.log.silly('config option1: ' + this.config.option1);
+        this.log.silly('config option2: ' + this.config.option2);
 
         /*
 		For every state in the system there has to be also an object of type state
@@ -52,6 +76,7 @@ class TestReact extends utils.Adapter {
 
         // In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
         this.subscribeStates('testVariable');
+        this.subscribeForeignObjects('enum.*');
         // You can also add a subscription for multiple states. The following line watches all states starting with "lights."
         // this.subscribeStates('lights.*');
         // Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
@@ -73,10 +98,10 @@ class TestReact extends utils.Adapter {
 
         // examples for the checkPassword/checkGroup functions
         let result = await this.checkPasswordAsync('admin', 'iobroker');
-        this.log.info('check user admin pw iobroker: ' + result);
+        this.log.silly('check user admin pw iobroker: ' + result);
 
         result = await this.checkGroupAsync('admin', 'admin');
-        this.log.info('check group user admin group admin: ' + result);
+        this.log.silly('check group user admin group admin: ' + result);
     }
 
     /**
@@ -101,15 +126,16 @@ class TestReact extends utils.Adapter {
     // /**
     //  * Is called if a subscribed object changes
     //  */
-    // private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
-    //     if (obj) {
-    //         // The object was changed
-    //         this.log.info(`object ${id} changed: ${JSON.stringify(obj)}`);
-    //     } else {
-    //         // The object was deleted
-    //         this.log.info(`object ${id} deleted`);
-    //     }
-    // }
+    private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
+        if (obj) {
+            // The object was changed
+            this.log.silly(`object ${id} changed: ${JSON.stringify(obj)}`);
+            // AdapterCreators.enumChanged(this, id, obj);
+        } else {
+            // The object was deleted
+            this.log.silly(`object ${id} deleted`);
+        }
+    }
 
     /**
      * Is called if a subscribed state changes
@@ -134,10 +160,10 @@ class TestReact extends utils.Adapter {
         if (typeof obj === 'object' && obj.message) {
             if (obj.command === 'send') {
                 // e.g. send email or pushover or whatever
-                this.log.info('send command');
+                this.log.silly('send command');
 
                 // Send response in callback if required
-                if (obj.callback) this.sendTo(obj.from, obj.command, 'Message received', obj.callback);
+                if (obj.callback) this.sendTo(obj.from, obj.command, 'Message received !3', obj.callback);
             }
         }
     }
