@@ -24,11 +24,19 @@ const generateHomeEnums_1 = require("./generateHomeEnums");
 let _homeContainers;
 let _adapter;
 // const enumChanged = (adapter: any, id: string, obj: ioBroker.Object | null | undefined): void => {};
+const _loadHomeContainerAsync = async () => {
+    if (_homeContainers !== null && _homeContainers !== undefined) {
+        await generateHomeEnums_1.unsubscribeToAllStates(_adapter, _homeContainers);
+    }
+    await FunctionHelper_1.default.generateAllFunctionsStateList(_adapter);
+    _homeContainers = await generateHomeEnums_1.generateHomeEnums(_adapter);
+    await generateHomeEnums_1.calculateHomeContainerValues(_homeContainers);
+    generateHomeEnums_1.subscribeToAllStates(_adapter, _homeContainers);
+};
 const onReady = async () => {
     try {
-        await FunctionHelper_1.default.generateAllFunctionsStateList(_adapter);
-        _homeContainers = await generateHomeEnums_1.generateHomeEnums(_adapter);
-        await generateHomeEnums_1.calculateHomeContainerValues(_homeContainers);
+        await _loadHomeContainerAsync();
+        _adapter.subscribeForeignObjects('enum.*');
     }
     catch (err) {
         // TODO ERRORHANDLING
@@ -52,10 +60,39 @@ const onMessage = (obj) => {
         }
     }
 };
+const onObjectChange = (id, obj) => {
+    if (obj) {
+        // The object was changed
+        if (id.startsWith('enum.')) {
+            console.log(`object ${id}`);
+            _loadHomeContainerAsync();
+        }
+        // console.log(`object ${id} changed: ${JSON.stringify(obj)}`);
+    }
+    else {
+        // The object was deleted
+        console.log(`object ${id} deleted`);
+    }
+};
+const onStateChange = (id, state) => {
+    if (state) {
+        if (_homeContainers !== undefined && _homeContainers !== null)
+            generateHomeEnums_1.aChangedStateToCheck(_homeContainers, id, state);
+    }
+    else {
+        //TODO: The state was deleted
+        console.log(`deleted state : ${id}`);
+        if (_homeContainers !== undefined && _homeContainers !== null)
+            generateHomeEnums_1.aDeleteStateToCheck(_homeContainers, id);
+    }
+};
 const init = (adapter) => {
     _adapter = adapter;
     _adapter.on('ready', onReady);
     _adapter.on('message', onMessage);
+    _adapter.on('objectChange', onObjectChange);
+    _adapter.on('stateChange', onStateChange);
+    // _adapter.on('unload', onUnload);
 };
 const HomeContainerHelper = {
     init: init,

@@ -32,10 +32,21 @@ export const calculateHomeContainerValues = (homeContainer: HomeContainer[]): Pr
     });
 };
 
+export const unsubscribeToAllStates = async (
+    adapter: AdapterInstance,
+    homeContainer: HomeContainer[],
+): Promise<void> => {
+    const ids = homeContainer.map((hc) => hc.getAllStates()).reduce((values, ids) => [...values, ...ids]);
+    for (const id of ids) {
+        await adapter.unsubscribeForeignStatesAsync(id);
+    }
+};
+
 export const subscribeToAllStates = (adapter: AdapterInstance, homeContainer: HomeContainer[]): void => {
+    const initV: string[] = [];
     homeContainer
         .map((hc) => hc.getAllStates())
-        .reduce((values, ids) => ({ ...values, ...ids }))
+        .reduce((values, ids) => [...values, ...ids], initV)
         .map((id) => adapter.subscribeForeignStates(id));
 };
 
@@ -78,3 +89,9 @@ export const generateHomeEnums = (adapter: AdapterInstance): Promise<HomeContain
         }
     });
 };
+
+export const aChangedStateToCheck = (homeContainer: HomeContainer[], id: string, state: ioBroker.State): void =>
+    homeContainer.forEach((hc: HomeContainer) => hc.aChangedStateToCheck(id, state));
+
+export const aDeleteStateToCheck = (homeContainer: HomeContainer[], id: string): void =>
+    homeContainer.forEach((hc: HomeContainer) => hc.aDeleteStateToCheck(id));

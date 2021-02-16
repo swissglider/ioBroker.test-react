@@ -22,12 +22,13 @@ const generateAllFunctionsStateList = (adapter: AdapterInstance): Promise<void> 
 
 const getMachingStateMembers = (id: string): T_STATE_MEMBERS | undefined => {
     let result: T_STATE_MEMBERS | undefined = undefined;
-    for (const [fId, fValue] of Object.entries(allFunctionsStateListe)) {
+    for (const [fType, fValue] of Object.entries(allFunctionsStateListe)) {
         const tArray: string[] = fValue.common.members.filter((e: string) => e.startsWith(id));
         if (tArray.length > 0) {
-            if (result === undefined) result = {};
-            if (result[fId] === undefined) result[fId] = { members: tArray };
-            else result[fId].members = tArray;
+            if (result === undefined) result = [];
+            for (const _id of tArray) {
+                result.push({ id: _id, fType: fType });
+            }
         }
     }
     return result;

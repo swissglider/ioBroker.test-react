@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateHomeEnums = exports.subscribeToAllStates = exports.calculateHomeContainerValues = void 0;
+exports.aDeleteStateToCheck = exports.aChangedStateToCheck = exports.generateHomeEnums = exports.subscribeToAllStates = exports.unsubscribeToAllStates = exports.calculateHomeContainerValues = void 0;
 const HomeContainer_1 = require("./HomeContainer");
 const calculateHomeContainerValues = (homeContainer) => {
     return new Promise((resolve, reject) => {
@@ -35,10 +35,18 @@ const calculateHomeContainerValues = (homeContainer) => {
     });
 };
 exports.calculateHomeContainerValues = calculateHomeContainerValues;
+const unsubscribeToAllStates = async (adapter, homeContainer) => {
+    const ids = homeContainer.map((hc) => hc.getAllStates()).reduce((values, ids) => [...values, ...ids]);
+    for (const id of ids) {
+        await adapter.unsubscribeForeignStatesAsync(id);
+    }
+};
+exports.unsubscribeToAllStates = unsubscribeToAllStates;
 const subscribeToAllStates = (adapter, homeContainer) => {
+    const initV = [];
     homeContainer
         .map((hc) => hc.getAllStates())
-        .reduce((values, ids) => ({ ...values, ...ids }))
+        .reduce((values, ids) => [...values, ...ids], initV)
         .map((id) => adapter.subscribeForeignStates(id));
 };
 exports.subscribeToAllStates = subscribeToAllStates;
@@ -84,3 +92,7 @@ const generateHomeEnums = (adapter) => {
     });
 };
 exports.generateHomeEnums = generateHomeEnums;
+const aChangedStateToCheck = (homeContainer, id, state) => homeContainer.forEach((hc) => hc.aChangedStateToCheck(id, state));
+exports.aChangedStateToCheck = aChangedStateToCheck;
+const aDeleteStateToCheck = (homeContainer, id) => homeContainer.forEach((hc) => hc.aDeleteStateToCheck(id));
+exports.aDeleteStateToCheck = aDeleteStateToCheck;

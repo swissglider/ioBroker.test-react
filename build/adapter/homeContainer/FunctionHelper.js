@@ -21,15 +21,14 @@ const generateAllFunctionsStateList = (adapter) => {
 };
 const getMachingStateMembers = (id) => {
     let result = undefined;
-    for (const [fId, fValue] of Object.entries(exports.allFunctionsStateListe)) {
+    for (const [fType, fValue] of Object.entries(exports.allFunctionsStateListe)) {
         const tArray = fValue.common.members.filter((e) => e.startsWith(id));
         if (tArray.length > 0) {
             if (result === undefined)
-                result = {};
-            if (result[fId] === undefined)
-                result[fId] = { members: tArray };
-            else
-                result[fId].members = tArray;
+                result = [];
+            for (const _id of tArray) {
+                result.push({ id: _id, fType: fType });
+            }
         }
     }
     return result;

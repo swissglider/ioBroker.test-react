@@ -24,7 +24,6 @@ class HomeContainer {
         _parentContainer.set(this, void 0);
         this.childrenHomeContainers = [];
         _adapter.set(this, void 0);
-        this.stateMembers = {};
         this.stateMembersValue = {};
         _initialized.set(this, 'none');
         _error.set(this, '');
@@ -76,35 +75,51 @@ class HomeContainer {
                 });
             });
         };
-        this._initValuesCalculationPerType = (type, members) => {
+        /**
+         * Update the stateMembersValue. If id and value is given it changes first the value and then updates
+         * if id or state are null/undefined, all the value will be new calculated.
+         * @param fType function type to calculate
+         * @param id id to update
+         * @param state state to update
+         */
+        this._updateValue = (fType, id, state) => {
+            //check if id or state is null/undefined if not, the state will be set to the new state
+            if (id !== null && id !== undefined && state !== null && state !== undefined) {
+                this.stateMembersValue[fType].all.some((e) => e.id === id && (e.state = state));
+            }
+            const allValues = this.stateMembersValue[fType].all
+                .filter((e) => e.state !== undefined)
+                .map((ee) => (ee.state !== undefined ? ee.state.val : undefined));
+            if (allValues.every((e) => typeof e === 'boolean')) {
+                this.stateMembersValue[fType]['on'] = allValues.some((e) => e);
+            }
+            else if (allValues.every((e) => typeof e === 'number')) {
+                this.stateMembersValue[fType]['av'] =
+                    Math.round((allValues.reduce((a, b) => a + b, 0) / allValues.length) * 10) / 10;
+                this.stateMembersValue[fType]['max'] = Math.round(Math.max(...allValues) * 10) / 10;
+                this.stateMembersValue[fType]['min'] = Math.round(Math.min(...allValues) * 10) / 10;
+                this.stateMembersValue[fType]['sum'] =
+                    Math.round(allValues.reduce((a, b) => a + b, 0) * 10) / 10;
+            }
+            console.log(`${JSON.stringify(this.object.common.name)} -> ${fType} -> ${JSON.stringify(Object.fromEntries(Object.entries(this.stateMembersValue[fType]).filter(([key]) => key !== 'all')))}`);
+        };
+        /**
+         * Calculate all the the values (av, max, min, sum, on) tor a specific function Type (fType)
+         * @param fType type to by calculated
+         * @param members
+         */
+        this._initValuesCalculationPerType = (fType) => {
             return new Promise((resolve, reject) => {
                 try {
                     const promises = [];
-                    for (const id of members) {
-                        promises.push(this._getForeignStateAsync(id));
+                    for (const ins of this.stateMembersValue[fType].all) {
+                        promises.push(this._getForeignStateAsync(ins.id));
                     }
                     Promise.all(promises)
                         .then((states) => {
-                        const allValues = states
+                        states
                             .filter((stateV) => stateV.state !== null)
-                            .map((stateV) => stateV.state.val);
-                        const allValuesID = states
-                            .filter((stateV) => stateV.state !== null)
-                            .map((stateV) => ({
-                            id: stateV.id,
-                            val: stateV.state.val,
-                        }));
-                        this.stateMembersValue[type] = { all: allValuesID };
-                        if (allValues.every((e) => typeof e === 'boolean')) {
-                            this.stateMembersValue[type]['on'] = allValues.some((e) => e);
-                        }
-                        else if (allValues.every((e) => typeof e === 'number')) {
-                            this.stateMembersValue[type]['av'] =
-                                allValues.reduce((a, b) => a + b, 0) / allValues.length;
-                            this.stateMembersValue[type]['max'] = Math.max(...allValues);
-                            this.stateMembersValue[type]['min'] = Math.min(...allValues);
-                            this.stateMembersValue[type]['sum'] = allValues.reduce((a, b) => a + b, 0);
-                        }
+                            .forEach((stateV) => this._updateValue(fType, stateV.id, stateV.state));
                         resolve();
                     })
                         .catch((err) => {
@@ -120,13 +135,16 @@ class HomeContainer {
                 }
             });
         };
+        /**
+         * calculates all the values (av, max, min, sum, on) for the first time
+         */
         this._initValuesCalculationAllTpyes = () => {
             return new Promise((resolve, reject) => {
                 try {
                     const promises = [];
-                    for (const [key, value] of Object.entries(this.stateMembers)) {
+                    for (const [key, value] of Object.entries(this.stateMembersValue)) {
                         if (value !== undefined)
-                            promises.push(this._initValuesCalculationPerType(key, value.members));
+                            promises.push(this._initValuesCalculationPerType(key));
                     }
                     Promise.allSettled(promises)
                         .then((arr) => {
@@ -151,6 +169,9 @@ class HomeContainer {
                 }
             });
         };
+        /**
+         * calculates all the values (av, max, min, sum, on) for the first time and the same for all the childrens
+         */
         this.initValuesCalculation = async () => {
             return new Promise((resolve, reject) => {
                 if (!this.isReady)
@@ -183,10 +204,37 @@ class HomeContainer {
                 }
             });
         };
+        this.aChangedStateToCheck = (id, state) => {
+            const type = this._getTypeOfState(id);
+            if (type === undefined)
+                return;
+            if (state !== null && state !== undefined)
+                this._updateValue(type, id, state);
+            for (const hc of this.childrenHomeContainers) {
+                hc.aChangedStateToCheck(id, state);
+            }
+        };
+        this.aDeleteStateToCheck = (id) => {
+            const type = this._getTypeOfState(id);
+            if (type === undefined)
+                return;
+            this.stateMembersValue[type].all = this.stateMembersValue[type].all.filter((e) => e.id !== id);
+            this._updateValue(type, undefined, undefined);
+            for (const hc of this.childrenHomeContainers) {
+                hc.aDeleteStateToCheck(id);
+            }
+        };
         this.getAllStates = () => {
-            return Object.values(this.stateMembers)
-                .map((v) => v.members)
-                .reduce((values, ids) => ({ ...values, ...ids }));
+            return Object.values(this.stateMembersValue)
+                .map((v) => v.all.map((e) => e.id))
+                .reduce((values, ids) => [...values, ...ids], []);
+        };
+        this._getTypeOfState = (id) => {
+            for (const [key, value] of Object.entries(this.stateMembersValue)) {
+                if (value.all.map((e) => e.id).includes(id))
+                    return key;
+            }
+            return undefined;
         };
         this.id = id;
         this.object = object;
@@ -243,32 +291,27 @@ class HomeContainer {
     /**
      *
      * @param memberID
-     * @param fresh if the same members has not yet been asked for by any children
+     * @param fromChild fromChild if the state is from a child
      * @param memberIDs already calculated memeberIDS from a child
      */
-    addStateMember(memberID, fresh = true, memberIDs) {
+    addStateMember(memberID, fromChild = false) {
         return new Promise((resolve, reject) => {
             try {
-                if (fresh || memberIDs === undefined) {
-                    const fTypes = FunctionHelper_1.default.getMachingStateMembers(memberID);
-                    if (fTypes === undefined)
-                        resolve();
-                    for (const fType of Object.keys(fTypes)) {
-                        if (!(fType in this.stateMembers)) {
-                            this.stateMembers[fType] = { members: [] };
+                const fTypes = FunctionHelper_1.default.getMachingStateMembers(memberID);
+                if (fTypes === undefined)
+                    resolve();
+                for (const { id, fType } of fTypes) {
+                    if (!(fType in this.stateMembersValue)) {
+                        this.stateMembersValue[fType] = { all: [{ id: id, fromChild: fromChild }] };
+                    }
+                    else {
+                        if (this.stateMembersValue[fType].all.findIndex((a) => a.id === id) === -1) {
+                            this.stateMembersValue[fType].all.push({ id: id, fromChild: fromChild });
                         }
                     }
-                    memberIDs = fTypes;
-                }
-                for (const fType of Object.keys(memberIDs)) {
-                    if (this.stateMembers[fType] === undefined)
-                        this.stateMembers[fType] = { members: [] };
-                    this.stateMembers[fType].members = [
-                        ...new Set([...this.stateMembers[fType].members, ...memberIDs[fType].members]),
-                    ];
                 }
                 if (__classPrivateFieldGet(this, _parentContainer) !== undefined) {
-                    __classPrivateFieldGet(this, _parentContainer).addStateMember(memberID, false)
+                    __classPrivateFieldGet(this, _parentContainer).addStateMember(memberID, true)
                         .then(() => {
                         resolve();
                     })
