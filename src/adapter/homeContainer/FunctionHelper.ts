@@ -1,9 +1,8 @@
-import { AdapterInstance } from '@iobroker/adapter-core';
 import { T_STATE_MEMBERS } from './HomeContainer';
 
 export let allFunctionsStateListe: { [key: string]: ioBroker.Enum } = {};
 
-const generateAllFunctionsStateList = (adapter: AdapterInstance): Promise<void> => {
+const generateAllFunctionsStateList = (adapter: ioBroker.Adapter): Promise<void> => {
     return new Promise((resolve, reject) => {
         try {
             const startTime = Date.now();

@@ -25,9 +25,19 @@ let _homeContainers;
 let _adapter;
 // const enumChanged = (adapter: any, id: string, obj: ioBroker.Object | null | undefined): void => {};
 const _loadHomeContainerAsync = async () => {
+    await _adapter.delObjectAsync('test-react.0.homeContainers').catch(() => {
+        return;
+    });
     if (_homeContainers !== null && _homeContainers !== undefined) {
         await generateHomeEnums_1.unsubscribeToAllStates(_adapter, _homeContainers);
     }
+    await _adapter.setObjectNotExistsAsync('homeContainers', {
+        type: 'device',
+        common: {
+            name: 'homeContainers',
+        },
+        native: {},
+    });
     await FunctionHelper_1.default.generateAllFunctionsStateList(_adapter);
     _homeContainers = await generateHomeEnums_1.generateHomeEnums(_adapter);
     await generateHomeEnums_1.calculateHomeContainerValues(_homeContainers);

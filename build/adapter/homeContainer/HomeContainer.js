@@ -27,53 +27,110 @@ class HomeContainer {
         this.stateMembersValue = {};
         _initialized.set(this, 'none');
         _error.set(this, '');
-        this._initChildHC = (member) => {
-            return new Promise((resolve, reject) => {
-                try {
-                    __classPrivateFieldGet(this, _adapter).getForeignObjectAsync(member, 'enum')
-                        .then((obj) => {
-                        const tempHC = new HomeContainer(member, obj, this, __classPrivateFieldGet(this, _adapter));
-                        tempHC
-                            .init()
-                            .then(() => {
-                            this.childrenHomeContainers.push(tempHC);
-                            resolve();
-                        })
-                            .catch((err) => {
+        this.init = () => {
+            const generateHomeContainers = () => {
+                const _initChildHC = (member) => {
+                    return new Promise((resolve, reject) => {
+                        try {
+                            __classPrivateFieldGet(this, _adapter).getForeignObjectAsync(member, 'enum')
+                                .then((obj) => {
+                                const tempHC = new HomeContainer(member, obj, this, __classPrivateFieldGet(this, _adapter));
+                                tempHC
+                                    .init()
+                                    .then(() => {
+                                    this.childrenHomeContainers.push(tempHC);
+                                    resolve();
+                                })
+                                    .catch((err) => {
+                                    // TODO ERRORHANDLING
+                                    __classPrivateFieldSet(this, _initialized, 'error');
+                                    __classPrivateFieldSet(this, _error, err.message);
+                                    reject(new Error(__classPrivateFieldGet(this, _error)));
+                                });
+                            })
+                                .catch((err) => {
+                                // TODO ERRORHANDLING
+                                __classPrivateFieldSet(this, _initialized, 'error');
+                                __classPrivateFieldSet(this, _error, err.message);
+                                reject(new Error(__classPrivateFieldGet(this, _error)));
+                            });
+                        }
+                        catch (err) {
                             // TODO ERRORHANDLING
                             __classPrivateFieldSet(this, _initialized, 'error');
                             __classPrivateFieldSet(this, _error, err.message);
                             reject(new Error(__classPrivateFieldGet(this, _error)));
+                        }
+                    });
+                };
+                return new Promise((resolve, reject) => {
+                    try {
+                        //generate Object for the HC
+                        const folderName = __classPrivateFieldGet(this, _adapter).namespace + '.homeContainers.' + this.id.replace(/\./g, '_');
+                        __classPrivateFieldGet(this, _adapter).setObjectNotExistsAsync(folderName, {
+                            type: 'device',
+                            common: {
+                                name: `${this.id.replace('enum.', '')}`,
+                            },
+                            native: {},
+                        })
+                            .then(() => {
+                            if (this.object.common.members === null || this.object.common.members === undefined) {
+                                __classPrivateFieldSet(this, _initialized, 'ok');
+                                resolve();
+                            }
+                            const promises = [];
+                            for (const member of this.object.common.members) {
+                                if (member.startsWith('enum.')) {
+                                    promises.push(_initChildHC(member));
+                                }
+                                else {
+                                    promises.push(this.addStateMember(member));
+                                }
+                            }
+                            Promise.allSettled(promises)
+                                .then((arr) => {
+                                if (arr.map((r) => r.status).every((s) => s === 'fulfilled')) {
+                                    __classPrivateFieldSet(this, _initialized, 'ok');
+                                    __classPrivateFieldGet(this, _adapter).setObjectNotExistsAsync(folderName + '.childrenList', {
+                                        type: 'state',
+                                        common: {
+                                            name: `${this.id.replace('enum_', '')} - children list`,
+                                        },
+                                        native: {},
+                                    })
+                                        .then(() => {
+                                        __classPrivateFieldGet(this, _adapter).setStateChangedAsync(folderName + '.childrenList', {
+                                            val: this.childrenHomeContainers.map((hc) => hc.id),
+                                            ack: true,
+                                        });
+                                    });
+                                    resolve();
+                                }
+                                else {
+                                    // TODO ERRORHANDLING
+                                    __classPrivateFieldSet(this, _initialized, 'error');
+                                    __classPrivateFieldSet(this, _error, 'not all children are successfully loaded');
+                                    reject(new Error(__classPrivateFieldGet(this, _error)));
+                                }
+                            })
+                                .catch((err) => {
+                                // TODO ERRORHANDLING
+                                __classPrivateFieldSet(this, _initialized, 'error');
+                                __classPrivateFieldSet(this, _error, err.message);
+                                reject(new Error(__classPrivateFieldGet(this, _error)));
+                            });
                         });
-                    })
-                        .catch((err) => {
+                    }
+                    catch (err) {
                         // TODO ERRORHANDLING
                         __classPrivateFieldSet(this, _initialized, 'error');
                         __classPrivateFieldSet(this, _error, err.message);
                         reject(new Error(__classPrivateFieldGet(this, _error)));
-                    });
-                }
-                catch (err) {
-                    // TODO ERRORHANDLING
-                    __classPrivateFieldSet(this, _initialized, 'error');
-                    __classPrivateFieldSet(this, _error, err.message);
-                    reject(new Error(__classPrivateFieldGet(this, _error)));
-                }
-            });
-        };
-        this._getForeignStateAsync = (id) => {
-            return new Promise((resolve, reject) => {
-                __classPrivateFieldGet(this, _adapter).getForeignStateAsync(id)
-                    .then((state) => {
-                    resolve({ id: id, state: state });
-                })
-                    .catch((err) => {
-                    // TODO ERRORHANDLING
-                    __classPrivateFieldSet(this, _initialized, 'error');
-                    __classPrivateFieldSet(this, _error, err.message);
-                    reject(new Error(__classPrivateFieldGet(this, _error)));
+                    }
                 });
-            });
+            };
+            return generateHomeContainers();
         };
         /**
          * Update the stateMembersValue. If id and value is given it changes first the value and then updates
@@ -87,6 +144,7 @@ class HomeContainer {
             if (id !== null && id !== undefined && state !== null && state !== undefined) {
                 this.stateMembersValue[fType].all.some((e) => e.id === id && (e.state = state));
             }
+            const oldValue = { ...this.stateMembersValue[fType] };
             const allValues = this.stateMembersValue[fType].all
                 .filter((e) => e.state !== undefined)
                 .map((ee) => (ee.state !== undefined ? ee.state.val : undefined));
@@ -98,86 +156,209 @@ class HomeContainer {
                     Math.round((allValues.reduce((a, b) => a + b, 0) / allValues.length) * 10) / 10;
                 this.stateMembersValue[fType]['max'] = Math.round(Math.max(...allValues) * 10) / 10;
                 this.stateMembersValue[fType]['min'] = Math.round(Math.min(...allValues) * 10) / 10;
-                this.stateMembersValue[fType]['sum'] =
-                    Math.round(allValues.reduce((a, b) => a + b, 0) * 10) / 10;
+                // this.stateMembersValue[fType]['sum'] =
+                //     Math.round((allValues as number[]).reduce((a, b) => a + b, 0) * 10) / 10;
             }
-            console.log(`${JSON.stringify(this.object.common.name)} -> ${fType} -> ${JSON.stringify(Object.fromEntries(Object.entries(this.stateMembersValue[fType]).filter(([key]) => key !== 'all')))}`);
-        };
-        /**
-         * Calculate all the the values (av, max, min, sum, on) tor a specific function Type (fType)
-         * @param fType type to by calculated
-         * @param members
-         */
-        this._initValuesCalculationPerType = (fType) => {
-            return new Promise((resolve, reject) => {
-                try {
-                    const promises = [];
-                    for (const ins of this.stateMembersValue[fType].all) {
-                        promises.push(this._getForeignStateAsync(ins.id));
+            // write to states
+            const folderName = __classPrivateFieldGet(this, _adapter).namespace + '.homeContainers.' + this.id.replace(/\./g, '_');
+            const stateFolderID = folderName + '.' + fType.replace(/\./g, '_');
+            let same = true;
+            if (Object.keys(oldValue).length === Object.keys(this.stateMembersValue[fType]).length) {
+                for (const key of Object.keys(oldValue)) {
+                    if (key !== 'all' &&
+                        key !== 'sum' &&
+                        key in oldValue &&
+                        key in this.stateMembersValue[fType] &&
+                        oldValue[key] !==
+                            this.stateMembersValue[fType][key]) {
+                        same = false;
                     }
-                    Promise.all(promises)
-                        .then((states) => {
-                        states
-                            .filter((stateV) => stateV.state !== null)
-                            .forEach((stateV) => this._updateValue(fType, stateV.id, stateV.state));
-                        resolve();
+                }
+            }
+            // if (same) return;
+            __classPrivateFieldGet(this, _adapter).getForeignObjectAsync(fType, 'enum').then((enumT) => {
+                const enumFunction = { ...enumT };
+                delete enumFunction.native;
+                delete enumFunction.common.members;
+                delete enumFunction.enums;
+                delete enumFunction.acl;
+                delete enumFunction.ts;
+                delete enumFunction.user;
+                delete enumFunction.from;
+                delete enumFunction.type;
+                __classPrivateFieldGet(this, _adapter).getForeignObjectAsync(this.stateMembersValue[fType].all[0].id)
+                    .then((sampleObject) => {
+                    __classPrivateFieldGet(this, _adapter).setObjectNotExistsAsync(stateFolderID, {
+                        type: 'channel',
+                        common: {
+                            name: 'Overall Values for Type: ' + fType,
+                            type: sampleObject.common.type,
+                            role: sampleObject.common.role,
+                            read: sampleObject.common.read,
+                            write: sampleObject.common.write,
+                            desc: sampleObject.common.desc !== undefined ? sampleObject.common.desc : undefined,
+                            max: sampleObject.common.max !== undefined ? sampleObject.common.max : undefined,
+                            min: sampleObject.common.min !== undefined ? sampleObject.common.min : undefined,
+                            unit: sampleObject.common.unit !== undefined ? sampleObject.common.unit : undefined,
+                            icon: enumFunction.common.icon,
+                        },
+                        native: {
+                            enumFunction: enumFunction,
+                        },
                     })
-                        .catch((err) => {
-                        // TODO ERRORHANDLING
-                        __classPrivateFieldSet(this, _initialized, 'error');
-                        __classPrivateFieldSet(this, _error, err.message);
-                        reject(new Error(__classPrivateFieldGet(this, _error)));
-                    });
-                }
-                catch (err) {
-                    // TODO ERRORHANDLING
-                    reject(err);
-                }
-            });
-        };
-        /**
-         * calculates all the values (av, max, min, sum, on) for the first time
-         */
-        this._initValuesCalculationAllTpyes = () => {
-            return new Promise((resolve, reject) => {
-                try {
-                    const promises = [];
-                    for (const [key, value] of Object.entries(this.stateMembersValue)) {
-                        if (value !== undefined)
-                            promises.push(this._initValuesCalculationPerType(key));
-                    }
-                    Promise.allSettled(promises)
-                        .then((arr) => {
-                        if (arr.map((r) => r.status).every((s) => s === 'fulfilled')) {
-                            resolve();
+                        .then(() => {
+                        for (const [key, value] of Object.entries(this.stateMembersValue[fType])) {
+                            if (key !== 'all') {
+                                const stateID = stateFolderID + '.' + key;
+                                __classPrivateFieldGet(this, _adapter).setObjectNotExistsAsync(stateID, {
+                                    type: 'state',
+                                    common: {
+                                        name: `${key}`,
+                                        type: sampleObject.common.type,
+                                        role: sampleObject.common.role,
+                                        read: sampleObject.common.read,
+                                        write: sampleObject.common.write,
+                                        desc: sampleObject.common.desc !== undefined
+                                            ? sampleObject.common.desc
+                                            : undefined,
+                                        max: sampleObject.common.max !== undefined
+                                            ? sampleObject.common.max
+                                            : undefined,
+                                        min: sampleObject.common.min !== undefined
+                                            ? sampleObject.common.min
+                                            : undefined,
+                                        unit: sampleObject.common.unit !== undefined
+                                            ? sampleObject.common.unit
+                                            : undefined,
+                                        icon: enumFunction.common.icon,
+                                    },
+                                    native: {
+                                        enumFunction: enumFunction,
+                                    },
+                                })
+                                    .then(() => {
+                                    __classPrivateFieldGet(this, _adapter).setStateChangedAsync(stateID, {
+                                        val: value,
+                                        ack: true,
+                                    });
+                                });
+                            }
                         }
-                        else {
-                            // TODO ERRORHANDLING
-                            reject(new Error('error while calculating the HomeContainers values'));
-                        }
-                    })
-                        .catch((err) => {
-                        // TODO ERRORHANDLING
-                        __classPrivateFieldSet(this, _initialized, 'error');
-                        __classPrivateFieldSet(this, _error, err.message);
-                        reject(new Error(__classPrivateFieldGet(this, _error)));
+                        // console.log(
+                        //     `${
+                        //         typeof this.object.common.name === 'string'
+                        //             ? this.object.common.name
+                        //             : 'de' in this.object.common.name
+                        //             ? this.object.common.name.de
+                        //             : this.object.common.name.en
+                        //     } -> ${fType} -> ${JSON.stringify(
+                        //         Object.fromEntries(
+                        //             Object.entries(this.stateMembersValue[fType]).filter(([key]) => key !== 'all'),
+                        //         ),
+                        //     )}`,
+                        // );
+                        // console.log(
+                        //     `${fType} -> ${JSON.stringify(
+                        //         Object.fromEntries(
+                        //             Object.entries(this.stateMembersValue[fType]).filter(([key]) => key !== 'all'),
+                        //         ),
+                        //     )} --- ${JSON.stringify(
+                        //         Object.fromEntries(Object.entries(oldValue).filter(([key]) => key !== 'all')),
+                        //     )}`,
+                        // );
                     });
-                }
-                catch (err) {
-                    // TODO ERRORHANDLING
-                    reject(err);
-                }
+                });
             });
         };
         /**
          * calculates all the values (av, max, min, sum, on) for the first time and the same for all the childrens
          */
         this.initValuesCalculation = async () => {
+            /**
+             * calculates all the values (av, max, min, sum, on) for the first time
+             */
+            const _initValuesCalculationAllTpyes = () => {
+                /**
+                 * Calculate all the the values (av, max, min, sum, on) tor a specific function Type (fType)
+                 * @param fType type to by calculated
+                 * @param members
+                 */
+                const _initValuesCalculationPerType = (fType) => {
+                    const _getForeignStateAsync = (id) => {
+                        return new Promise((resolve, reject) => {
+                            __classPrivateFieldGet(this, _adapter).getForeignStateAsync(id)
+                                .then((state) => {
+                                resolve({ id: id, state: state });
+                            })
+                                .catch((err) => {
+                                // TODO ERRORHANDLING
+                                __classPrivateFieldSet(this, _initialized, 'error');
+                                __classPrivateFieldSet(this, _error, err.message);
+                                reject(new Error(__classPrivateFieldGet(this, _error)));
+                            });
+                        });
+                    };
+                    return new Promise((resolve, reject) => {
+                        try {
+                            const promises = [];
+                            for (const ins of this.stateMembersValue[fType].all) {
+                                promises.push(_getForeignStateAsync(ins.id));
+                            }
+                            Promise.all(promises)
+                                .then((states) => {
+                                states
+                                    .filter((stateV) => stateV.state !== null)
+                                    .forEach((stateV) => this._updateValue(fType, stateV.id, stateV.state));
+                                resolve();
+                            })
+                                .catch((err) => {
+                                // TODO ERRORHANDLING
+                                __classPrivateFieldSet(this, _initialized, 'error');
+                                __classPrivateFieldSet(this, _error, err.message);
+                                reject(new Error(__classPrivateFieldGet(this, _error)));
+                            });
+                        }
+                        catch (err) {
+                            // TODO ERRORHANDLING
+                            reject(err);
+                        }
+                    });
+                };
+                return new Promise((resolve, reject) => {
+                    try {
+                        const promises = [];
+                        for (const [key, value] of Object.entries(this.stateMembersValue)) {
+                            if (value !== undefined)
+                                promises.push(_initValuesCalculationPerType(key));
+                        }
+                        Promise.allSettled(promises)
+                            .then((arr) => {
+                            if (arr.map((r) => r.status).every((s) => s === 'fulfilled')) {
+                                resolve();
+                            }
+                            else {
+                                // TODO ERRORHANDLING
+                                reject(new Error('error while calculating the HomeContainers values'));
+                            }
+                        })
+                            .catch((err) => {
+                            // TODO ERRORHANDLING
+                            __classPrivateFieldSet(this, _initialized, 'error');
+                            __classPrivateFieldSet(this, _error, err.message);
+                            reject(new Error(__classPrivateFieldGet(this, _error)));
+                        });
+                    }
+                    catch (err) {
+                        // TODO ERRORHANDLING
+                        reject(err);
+                    }
+                });
+            };
             return new Promise((resolve, reject) => {
                 if (!this.isReady)
                     reject('Not yet ready');
                 try {
-                    const promises = [this._initValuesCalculationAllTpyes()];
+                    const promises = [_initValuesCalculationAllTpyes()];
                     for (const hc of this.childrenHomeContainers) {
                         promises.push(hc.initValuesCalculation());
                     }
@@ -240,53 +421,6 @@ class HomeContainer {
         this.object = object;
         __classPrivateFieldSet(this, _parentContainer, parentContainer);
         __classPrivateFieldSet(this, _adapter, adapter);
-    }
-    init() {
-        return this.generateChildrenHomeContainers();
-    }
-    generateChildrenHomeContainers() {
-        return new Promise((resolve, reject) => {
-            try {
-                if (this.object.common.members === null || this.object.common.members === undefined) {
-                    __classPrivateFieldSet(this, _initialized, 'ok');
-                    resolve();
-                }
-                const promises = [];
-                for (const member of this.object.common.members) {
-                    if (member.startsWith('enum.')) {
-                        promises.push(this._initChildHC(member));
-                    }
-                    else {
-                        promises.push(this.addStateMember(member));
-                    }
-                }
-                Promise.allSettled(promises)
-                    .then((arr) => {
-                    if (arr.map((r) => r.status).every((s) => s === 'fulfilled')) {
-                        __classPrivateFieldSet(this, _initialized, 'ok');
-                        resolve();
-                    }
-                    else {
-                        // TODO ERRORHANDLING
-                        __classPrivateFieldSet(this, _initialized, 'error');
-                        __classPrivateFieldSet(this, _error, 'not all children are successfully loaded');
-                        reject(new Error(__classPrivateFieldGet(this, _error)));
-                    }
-                })
-                    .catch((err) => {
-                    // TODO ERRORHANDLING
-                    __classPrivateFieldSet(this, _initialized, 'error');
-                    __classPrivateFieldSet(this, _error, err.message);
-                    reject(new Error(__classPrivateFieldGet(this, _error)));
-                });
-            }
-            catch (err) {
-                // TODO ERRORHANDLING
-                __classPrivateFieldSet(this, _initialized, 'error');
-                __classPrivateFieldSet(this, _error, err.message);
-                reject(new Error(__classPrivateFieldGet(this, _error)));
-            }
-        });
     }
     /**
      *

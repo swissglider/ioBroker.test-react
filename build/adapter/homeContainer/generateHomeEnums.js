@@ -50,6 +50,41 @@ const subscribeToAllStates = (adapter, homeContainer) => {
         .map((id) => adapter.subscribeForeignStates(id));
 };
 exports.subscribeToAllStates = subscribeToAllStates;
+const _writeHomeList = (adapter, homes) => {
+    return new Promise((resolve, reject) => {
+        try {
+            adapter
+                .setObjectNotExistsAsync('homeContainers.home_list', {
+                type: 'state',
+                common: {
+                    name: 'List with all the Homes',
+                    type: 'array',
+                    role: 'json',
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            })
+                .then(() => {
+                adapter
+                    .setStateChangedAsync('homeContainers.home_list', {
+                    val: JSON.stringify(homes.map((e) => ({
+                        id: e,
+                        theHomeFolder: adapter.namespace + '.homeContainers.' + e.replace(/\./g, '_'),
+                    }))),
+                    ack: true,
+                })
+                    .then(() => resolve())
+                    .catch((err) => reject(err));
+            })
+                .catch((err) => reject(err));
+        }
+        catch (err) {
+            // TODO ERRORHANDLING
+            reject(err);
+        }
+    });
+};
 const generateHomeEnums = (adapter) => {
     return new Promise((resolve, reject) => {
         try {
@@ -58,6 +93,7 @@ const generateHomeEnums = (adapter) => {
                 .getForeignObjectsAsync('enum.home.*', 'enum')
                 .then((allEnums) => {
                 const homeContainers = [];
+                _writeHomeList(adapter, Object.keys(allEnums)).catch((err) => reject(err));
                 const promises = [];
                 for (const [id, value] of Object.entries(allEnums)) {
                     const tmpHC = new HomeContainer_1.HomeContainer(id, value, undefined, adapter);

@@ -1,4 +1,3 @@
-import { AdapterInstance } from '@iobroker/adapter-core';
 import FunctionHelper, { allFunctionsStateListe } from './FunctionHelper';
 import {
     aChangedStateToCheck,
@@ -11,14 +10,24 @@ import {
 import { HomeContainer } from './HomeContainer';
 
 let _homeContainers: HomeContainer[];
-let _adapter: AdapterInstance;
+let _adapter: ioBroker.Adapter;
 
 // const enumChanged = (adapter: any, id: string, obj: ioBroker.Object | null | undefined): void => {};
 
 const _loadHomeContainerAsync = async (): Promise<void> => {
+    await _adapter.delObjectAsync('test-react.0.homeContainers').catch(() => {
+        return;
+    });
     if (_homeContainers !== null && _homeContainers !== undefined) {
         await unsubscribeToAllStates(_adapter, _homeContainers);
     }
+    await _adapter.setObjectNotExistsAsync('homeContainers', {
+        type: 'device',
+        common: {
+            name: 'homeContainers',
+        },
+        native: {},
+    });
     await FunctionHelper.generateAllFunctionsStateList(_adapter);
     _homeContainers = await generateHomeEnums(_adapter);
     await calculateHomeContainerValues(_homeContainers);
@@ -75,7 +84,7 @@ const onStateChange = (id: string, state: ioBroker.State | null | undefined): vo
     }
 };
 
-const init = (adapter: AdapterInstance): void => {
+const init = (adapter: ioBroker.Adapter): void => {
     _adapter = adapter;
     _adapter.on('ready', onReady);
     _adapter.on('message', onMessage);

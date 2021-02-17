@@ -1,4 +1,3 @@
-import { AdapterInstance } from '@iobroker/adapter-core';
 import { HomeContainer } from './HomeContainer';
 
 export const calculateHomeContainerValues = (homeContainer: HomeContainer[]): Promise<void | Error> => {
@@ -33,7 +32,7 @@ export const calculateHomeContainerValues = (homeContainer: HomeContainer[]): Pr
 };
 
 export const unsubscribeToAllStates = async (
-    adapter: AdapterInstance,
+    adapter: ioBroker.Adapter,
     homeContainer: HomeContainer[],
 ): Promise<void> => {
     const ids = homeContainer.map((hc) => hc.getAllStates()).reduce((values, ids) => [...values, ...ids]);
@@ -42,7 +41,7 @@ export const unsubscribeToAllStates = async (
     }
 };
 
-export const subscribeToAllStates = (adapter: AdapterInstance, homeContainer: HomeContainer[]): void => {
+export const subscribeToAllStates = (adapter: ioBroker.Adapter, homeContainer: HomeContainer[]): void => {
     const initV: string[] = [];
     homeContainer
         .map((hc) => hc.getAllStates())
@@ -50,7 +49,44 @@ export const subscribeToAllStates = (adapter: AdapterInstance, homeContainer: Ho
         .map((id) => adapter.subscribeForeignStates(id));
 };
 
-export const generateHomeEnums = (adapter: AdapterInstance): Promise<HomeContainer[]> => {
+const _writeHomeList = (adapter: ioBroker.Adapter, homes: string[]): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        try {
+            adapter
+                .setObjectNotExistsAsync('homeContainers.home_list', {
+                    type: 'state',
+                    common: {
+                        name: 'List with all the Homes',
+                        type: 'array',
+                        role: 'json',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                })
+                .then(() => {
+                    adapter
+                        .setStateChangedAsync('homeContainers.home_list', {
+                            val: JSON.stringify(
+                                homes.map((e) => ({
+                                    id: e,
+                                    theHomeFolder: adapter.namespace + '.homeContainers.' + e.replace(/\./g, '_'),
+                                })),
+                            ),
+                            ack: true,
+                        })
+                        .then(() => resolve())
+                        .catch((err) => reject(err));
+                })
+                .catch((err) => reject(err));
+        } catch (err) {
+            // TODO ERRORHANDLING
+            reject(err);
+        }
+    });
+};
+
+export const generateHomeEnums = (adapter: ioBroker.Adapter): Promise<HomeContainer[]> => {
     return new Promise((resolve, reject) => {
         try {
             const startTime = Date.now();
@@ -58,6 +94,7 @@ export const generateHomeEnums = (adapter: AdapterInstance): Promise<HomeContain
                 .getForeignObjectsAsync('enum.home.*', 'enum')
                 .then((allEnums: any) => {
                     const homeContainers: HomeContainer[] = [];
+                    _writeHomeList(adapter, Object.keys(allEnums)).catch((err) => reject(err));
                     const promises = [];
                     for (const [id, value] of Object.entries(allEnums)) {
                         const tmpHC = new HomeContainer(id, value as ioBroker.Object, undefined, adapter);
