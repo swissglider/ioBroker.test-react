@@ -1,4 +1,12 @@
 import FunctionHelper, { allFunctionsStateListe } from './FunctionHelper';
+import {
+    aChangedStateToCheck,
+    aDeleteStateToCheck,
+    calculateHomeContainerValues,
+    generateHomeEnums,
+    subscribeToAllStates,
+    unsubscribeToAllStates,
+} from './generateHomeEnums';
 import { HomeContainer } from './HomeContainer';
 
 let _homeContainers: HomeContainer[];
@@ -7,16 +15,25 @@ let _adapter: ioBroker.Adapter;
 // const enumChanged = (adapter: any, id: string, obj: ioBroker.Object | null | undefined): void => {};
 
 const _loadHomeContainerAsync = async (): Promise<void> => {
-    await FunctionHelper.generateAllFunctionsStateList(_adapter);
-    const allEnums = await _adapter.getForeignObjectsAsync('enum.home.*', 'enum');
-    const homeContainers: HomeContainer[] = [];
-    const promises = [];
-    for (const [id, value] of Object.entries(allEnums)) {
-        const tmpHC = new HomeContainer(id, value, _adapter);
-        promises.push(tmpHC.init().then(() => homeContainers.push(tmpHC)));
+    console.log('_loadHomeContainerAsync');
+    const obs = await _adapter.getAdapterObjectsAsync();
+    for (const key of Object.keys(obs)) {
+        await _adapter.delObjectAsync(key);
     }
-    if (promises.length > 0) await Promise.allSettled(promises);
-    _homeContainers = homeContainers;
+    if (_homeContainers !== null && _homeContainers !== undefined) {
+        await unsubscribeToAllStates(_adapter, _homeContainers);
+    }
+    await _adapter.setObjectNotExistsAsync('homeContainers', {
+        type: 'folder',
+        common: {
+            name: 'homeContainers',
+        },
+        native: {},
+    });
+    await FunctionHelper.generateAllFunctionsStateList(_adapter);
+    _homeContainers = await generateHomeEnums(_adapter);
+    await calculateHomeContainerValues(_homeContainers);
+    subscribeToAllStates(_adapter, _homeContainers);
 };
 
 const onReady = async (): Promise<void> => {
@@ -36,10 +53,10 @@ const onReady = async (): Promise<void> => {
 
 const onMessage = (obj: ioBroker.Message): void => {
     if (typeof obj === 'object' && obj.message) {
-        if (obj.command == 'home_container::getHomeContainer') {
+        if (obj.command == 'home_container_org::getHomeContainer') {
             if (obj.callback) _adapter.sendTo(obj.from, obj.command, _homeContainers, obj.callback);
         }
-        if (obj.command == 'home_container::getAllFunctionsStateListe') {
+        if (obj.command == 'home_container_org::getAllFunctionsStateListe') {
             if (obj.callback) _adapter.sendTo(obj.from, obj.command, allFunctionsStateListe, obj.callback);
         }
     }
@@ -59,11 +76,22 @@ const onObjectChange = (id: string, obj: ioBroker.Object | null | undefined): vo
     }
 };
 
+const onStateChange = (id: string, state: ioBroker.State | null | undefined): void => {
+    if (state) {
+        if (_homeContainers !== undefined && _homeContainers !== null) aChangedStateToCheck(_homeContainers, id, state);
+    } else {
+        //TODO: The state was deleted
+        console.log(`deleted state : ${id}`);
+        if (_homeContainers !== undefined && _homeContainers !== null) aDeleteStateToCheck(_homeContainers, id);
+    }
+};
+
 const init = (adapter: ioBroker.Adapter): void => {
     _adapter = adapter;
     _adapter.on('ready', onReady);
     _adapter.on('message', onMessage);
     _adapter.on('objectChange', onObjectChange);
+    _adapter.on('stateChange', onStateChange);
     // _adapter.on('unload', onUnload);
 };
 

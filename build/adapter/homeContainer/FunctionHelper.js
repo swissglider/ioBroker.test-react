@@ -2,32 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.allFunctionsStateListe = void 0;
 exports.allFunctionsStateListe = {};
-const generateAllFunctionsStateList = (adapter) => {
-    return new Promise((resolve, reject) => {
-        try {
-            const startTime = Date.now();
-            adapter.getForeignObjectsAsync('enum.functions.*', 'enum').then((allEnums) => {
-                exports.allFunctionsStateListe = { ...allEnums };
-                const endTime = Date.now();
-                console.log(`allFunctionStateListe loaded in ${endTime - startTime}ms`);
-                resolve();
-            });
-        }
-        catch (err) {
-            // TODO ERRORHANDLING
-            reject(err);
-        }
-    });
+const generateAllFunctionsStateList = async (adapter) => {
+    const allEnums = await adapter.getForeignObjectsAsync('enum.functions.*', 'enum');
+    exports.allFunctionsStateListe = { ...allEnums };
 };
 const getMachingStateMembers = (id) => {
-    let result = undefined;
+    const result = {};
     for (const [fType, fValue] of Object.entries(exports.allFunctionsStateListe)) {
         const tArray = fValue.common.members.filter((e) => e.startsWith(id));
         if (tArray.length > 0) {
-            if (result === undefined)
-                result = [];
+            if (!(fType in result))
+                result[fType] = [];
             for (const _id of tArray) {
-                result.push({ id: _id, fType: fType });
+                result[fType].push(_id);
             }
         }
     }
