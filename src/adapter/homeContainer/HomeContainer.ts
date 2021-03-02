@@ -7,7 +7,7 @@ export type T_MEMBER_STATE_IDS = {
 export class HomeContainer {
     memberEnumsIDs: string[] = [];
     localMemberStateIDs: T_MEMBER_STATE_IDS = {};
-    recursiceMemberStateIDs: T_MEMBER_STATE_IDS = {};
+    recursiveMemberStateIDs: T_MEMBER_STATE_IDS = {};
     childrenHomeContainers: HomeContainer[] = [];
     initialized: 'none' | 'loading' | 'ok' | 'error' = 'none';
     error: string | undefined = '';
@@ -29,6 +29,17 @@ export class HomeContainer {
         this.initialized = 'ok';
     };
 
+    public getAllRecursiceStateID = (): string[] => {
+        return [
+            ...new Set(
+                Object.values(this.recursiveMemberStateIDs).reduce(
+                    (accumulator, currentValue) => [...accumulator, ...currentValue],
+                    [],
+                ),
+            ),
+        ];
+    };
+
     private _addEnum = async (id: string): Promise<void> => {
         this.memberEnumsIDs.push(id);
         const enumObj = await this.#adapter.getForeignObjectAsync(id, 'enum');
@@ -40,24 +51,23 @@ export class HomeContainer {
     };
 
     private _addStateID = (id: string): void => {
-        console.log(this.id + ' - _addStateID:1');
         const msm = FunctionHelper.getMachingStateMembers(id);
         this._mergeMemberStateIDTypesWithLocalOnes(msm);
-        this.localMemberStateIDs = { ...this.recursiceMemberStateIDs };
+        this.localMemberStateIDs = { ...this.recursiveMemberStateIDs };
     };
 
     public getRecursiveMemberStateIDs = (): T_MEMBER_STATE_IDS => {
         for (const hc of this.childrenHomeContainers) {
             this._mergeMemberStateIDTypesWithLocalOnes(hc.getRecursiveMemberStateIDs());
         }
-        return this.recursiceMemberStateIDs;
+        return this.recursiveMemberStateIDs;
     };
 
     private _mergeMemberStateIDTypesWithLocalOnes = (additionalMSIDs: T_MEMBER_STATE_IDS): void => {
         for (const [newKey, newValues] of Object.entries(additionalMSIDs)) {
-            if (!(newKey in this.recursiceMemberStateIDs)) this.recursiceMemberStateIDs[newKey] = [];
-            this.recursiceMemberStateIDs[newKey] = [
-                ...new Set([...this.recursiceMemberStateIDs[newKey], ...newValues]),
+            if (!(newKey in this.recursiveMemberStateIDs)) this.recursiveMemberStateIDs[newKey] = [];
+            this.recursiveMemberStateIDs[newKey] = [
+                ...new Set([...this.recursiveMemberStateIDs[newKey], ...newValues]),
             ];
         }
     };

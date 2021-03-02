@@ -37,6 +37,15 @@ const _loadHomeContainerAsync = async () => {
         await Promise.allSettled(promises);
     _homeContainers = homeContainers;
 };
+const getAllImpactingStates = () => {
+    return [...new Set(_homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]))];
+};
+const getAllImpactingObjects = async () => {
+    const statesIDs = _homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]);
+    const allEnums = await _adapter.getForeignObjectsAsync('enum.*', 'enum');
+    const objectIDs = Object.keys(allEnums);
+    return [...new Set([...statesIDs, ...objectIDs])];
+};
 const onReady = async () => {
     try {
         await _loadHomeContainerAsync();
@@ -52,7 +61,7 @@ const onReady = async () => {
         console.log('***********************');
     }
 };
-const onMessage = (obj) => {
+const onMessage = async (obj) => {
     if (typeof obj === 'object' && obj.message) {
         if (obj.command == 'home_container::getHomeContainer') {
             if (obj.callback)
@@ -61,6 +70,15 @@ const onMessage = (obj) => {
         if (obj.command == 'home_container::getAllFunctionsStateListe') {
             if (obj.callback)
                 _adapter.sendTo(obj.from, obj.command, FunctionHelper_1.allFunctionsStateListe, obj.callback);
+        }
+        if (obj.command == 'home_container::getAllImpactingStates') {
+            if (obj.callback)
+                _adapter.sendTo(obj.from, obj.command, getAllImpactingStates(), obj.callback);
+        }
+        if (obj.command == 'home_container::getAllImpactingObjects') {
+            const t = await getAllImpactingObjects();
+            if (obj.callback)
+                _adapter.sendTo(obj.from, obj.command, t, obj.callback);
         }
     }
 };

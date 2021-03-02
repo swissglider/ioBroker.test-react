@@ -19,6 +19,17 @@ const _loadHomeContainerAsync = async (): Promise<void> => {
     _homeContainers = homeContainers;
 };
 
+const getAllImpactingStates = (): string[] => {
+    return [...new Set(_homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]))];
+};
+
+const getAllImpactingObjects = async (): Promise<string[]> => {
+    const statesIDs = _homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]);
+    const allEnums = await _adapter.getForeignObjectsAsync('enum.*', 'enum');
+    const objectIDs = Object.keys(allEnums);
+    return [...new Set([...statesIDs, ...objectIDs])];
+};
+
 const onReady = async (): Promise<void> => {
     try {
         await _loadHomeContainerAsync();
@@ -34,13 +45,20 @@ const onReady = async (): Promise<void> => {
     }
 };
 
-const onMessage = (obj: ioBroker.Message): void => {
+const onMessage = async (obj: ioBroker.Message): Promise<void> => {
     if (typeof obj === 'object' && obj.message) {
         if (obj.command == 'home_container::getHomeContainer') {
             if (obj.callback) _adapter.sendTo(obj.from, obj.command, _homeContainers, obj.callback);
         }
         if (obj.command == 'home_container::getAllFunctionsStateListe') {
             if (obj.callback) _adapter.sendTo(obj.from, obj.command, allFunctionsStateListe, obj.callback);
+        }
+        if (obj.command == 'home_container::getAllImpactingStates') {
+            if (obj.callback) _adapter.sendTo(obj.from, obj.command, getAllImpactingStates(), obj.callback);
+        }
+        if (obj.command == 'home_container::getAllImpactingObjects') {
+            const t = await getAllImpactingObjects();
+            if (obj.callback) _adapter.sendTo(obj.from, obj.command, t, obj.callback);
         }
     }
 };
