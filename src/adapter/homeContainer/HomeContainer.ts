@@ -4,11 +4,27 @@ export type T_MEMBER_STATE_IDS = {
     [fType: string]: string[];
 };
 
-export class HomeContainer {
+export type T_HOME_CONTAINER_LIST = { [id: string]: I_HOME_CONTAINER };
+
+export interface I_HOME_CONTAINER {
+    id: string;
+    memberEnumsIDs: string[];
+    localMemberStateIDs: T_MEMBER_STATE_IDS;
+    recursiveMemberStateIDs: T_MEMBER_STATE_IDS;
+    childrenHomeContainers: T_HOME_CONTAINER_LIST;
+    initialized: 'none' | 'loading' | 'ok' | 'error';
+    error: string | undefined;
+    init: () => Promise<void>;
+    getAllRecursiceStateID: () => string[];
+    getRecursiveMemberStateIDs: () => T_MEMBER_STATE_IDS;
+}
+
+export class HomeContainer implements I_HOME_CONTAINER {
     memberEnumsIDs: string[] = [];
     localMemberStateIDs: T_MEMBER_STATE_IDS = {};
     recursiveMemberStateIDs: T_MEMBER_STATE_IDS = {};
-    childrenHomeContainers: HomeContainer[] = [];
+    childrenHomeContainers: T_HOME_CONTAINER_LIST = {};
+    // childrenHomeContainers: { [id: string]: I_HOME_CONTAINER } = {};
     initialized: 'none' | 'loading' | 'ok' | 'error' = 'none';
     error: string | undefined = '';
     #enumObject;
@@ -44,9 +60,9 @@ export class HomeContainer {
         this.memberEnumsIDs.push(id);
         const enumObj = await this.#adapter.getForeignObjectAsync(id, 'enum');
         if (enumObj !== null && enumObj !== undefined) {
-            const childHC = new HomeContainer(id, enumObj, this.#adapter);
+            const childHC: I_HOME_CONTAINER = new HomeContainer(id, enumObj, this.#adapter);
             await childHC.init();
-            this.childrenHomeContainers.push(childHC);
+            this.childrenHomeContainers[id] = childHC;
         }
     };
 
@@ -57,7 +73,7 @@ export class HomeContainer {
     };
 
     public getRecursiveMemberStateIDs = (): T_MEMBER_STATE_IDS => {
-        for (const hc of this.childrenHomeContainers) {
+        for (const hc of Object.values(this.childrenHomeContainers)) {
             this._mergeMemberStateIDTypesWithLocalOnes(hc.getRecursiveMemberStateIDs());
         }
         return this.recursiveMemberStateIDs;

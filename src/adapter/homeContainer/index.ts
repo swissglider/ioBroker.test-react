@@ -1,7 +1,7 @@
 import FunctionHelper, { allFunctionsStateListe } from './FunctionHelper';
-import { HomeContainer } from './HomeContainer';
+import { HomeContainer, I_HOME_CONTAINER, T_HOME_CONTAINER_LIST } from './HomeContainer';
 
-let _homeContainers: HomeContainer[];
+let _homeContainers: T_HOME_CONTAINER_LIST;
 let _adapter: ioBroker.Adapter;
 
 // const enumChanged = (adapter: any, id: string, obj: ioBroker.Object | null | undefined): void => {};
@@ -9,22 +9,28 @@ let _adapter: ioBroker.Adapter;
 const _loadHomeContainerAsync = async (): Promise<void> => {
     await FunctionHelper.generateAllFunctionsStateList(_adapter);
     const allEnums = await _adapter.getForeignObjectsAsync('enum.home.*', 'enum');
-    const homeContainers: HomeContainer[] = [];
+    const homeContainers: T_HOME_CONTAINER_LIST = {};
     const promises = [];
     for (const [id, value] of Object.entries(allEnums)) {
-        const tmpHC = new HomeContainer(id, value, _adapter);
-        promises.push(tmpHC.init().then(() => homeContainers.push(tmpHC)));
+        const tmpHC: I_HOME_CONTAINER = new HomeContainer(id, value, _adapter);
+        promises.push(tmpHC.init().then(() => (homeContainers[id] = tmpHC)));
     }
     if (promises.length > 0) await Promise.allSettled(promises);
     _homeContainers = homeContainers;
 };
 
 const getAllImpactingStates = (): string[] => {
-    return [...new Set(_homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]))];
+    return [
+        ...new Set(
+            Object.values(_homeContainers)
+                .map((hc) => hc.getAllRecursiceStateID())
+                .reduce((acc, cV) => [...acc, ...cV]),
+        ),
+    ];
 };
 
 const getAllImpactingObjects = async (): Promise<string[]> => {
-    const statesIDs = _homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]);
+    const statesIDs = getAllImpactingStates();
     const allEnums = await _adapter.getForeignObjectsAsync('enum.*', 'enum');
     const objectIDs = Object.keys(allEnums);
     return [...new Set([...statesIDs, ...objectIDs])];

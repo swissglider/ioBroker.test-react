@@ -25,7 +25,8 @@ class HomeContainer {
         this.memberEnumsIDs = [];
         this.localMemberStateIDs = {};
         this.recursiveMemberStateIDs = {};
-        this.childrenHomeContainers = [];
+        this.childrenHomeContainers = {};
+        // childrenHomeContainers: { [id: string]: I_HOME_CONTAINER } = {};
         this.initialized = 'none';
         this.error = '';
         _enumObject.set(this, void 0);
@@ -50,7 +51,7 @@ class HomeContainer {
             if (enumObj !== null && enumObj !== undefined) {
                 const childHC = new HomeContainer(id, enumObj, __classPrivateFieldGet(this, _adapter));
                 await childHC.init();
-                this.childrenHomeContainers.push(childHC);
+                this.childrenHomeContainers[id] = childHC;
             }
         };
         this._addStateID = (id) => {
@@ -59,7 +60,7 @@ class HomeContainer {
             this.localMemberStateIDs = { ...this.recursiveMemberStateIDs };
         };
         this.getRecursiveMemberStateIDs = () => {
-            for (const hc of this.childrenHomeContainers) {
+            for (const hc of Object.values(this.childrenHomeContainers)) {
                 this._mergeMemberStateIDTypesWithLocalOnes(hc.getRecursiveMemberStateIDs());
             }
             return this.recursiveMemberStateIDs;

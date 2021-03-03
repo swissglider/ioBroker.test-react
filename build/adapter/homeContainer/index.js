@@ -27,21 +27,25 @@ let _adapter;
 const _loadHomeContainerAsync = async () => {
     await FunctionHelper_1.default.generateAllFunctionsStateList(_adapter);
     const allEnums = await _adapter.getForeignObjectsAsync('enum.home.*', 'enum');
-    const homeContainers = [];
+    const homeContainers = {};
     const promises = [];
     for (const [id, value] of Object.entries(allEnums)) {
         const tmpHC = new HomeContainer_1.HomeContainer(id, value, _adapter);
-        promises.push(tmpHC.init().then(() => homeContainers.push(tmpHC)));
+        promises.push(tmpHC.init().then(() => (homeContainers[id] = tmpHC)));
     }
     if (promises.length > 0)
         await Promise.allSettled(promises);
     _homeContainers = homeContainers;
 };
 const getAllImpactingStates = () => {
-    return [...new Set(_homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]))];
+    return [
+        ...new Set(Object.values(_homeContainers)
+            .map((hc) => hc.getAllRecursiceStateID())
+            .reduce((acc, cV) => [...acc, ...cV])),
+    ];
 };
 const getAllImpactingObjects = async () => {
-    const statesIDs = _homeContainers.map((hc) => hc.getAllRecursiceStateID()).reduce((acc, cV) => [...acc, ...cV]);
+    const statesIDs = getAllImpactingStates();
     const allEnums = await _adapter.getForeignObjectsAsync('enum.*', 'enum');
     const objectIDs = Object.keys(allEnums);
     return [...new Set([...statesIDs, ...objectIDs])];
