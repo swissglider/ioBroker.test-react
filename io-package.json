@@ -86,7 +86,22 @@
     },
     "native": {
         "option1": true,
-        "option2": "42"
+        "option2": "42",
+        "optTest": 1,
+        "BLACK_LIST_SENSOR_TYPES": ["enum.functions.blinds_position", "enum.functions.wind_"],
+        "LOCATION_OVERVIEW_BOW_SENSOR_TYPES": {
+            "switch": ["enum.functions.light", "enum.functions.blinds", "enum.functions.szenen"],
+            "boolean": ["enum.functions.doors", "enum.functions.window", "enum.functions.motion"],
+            "allboolean": [
+                "enum.functions.light",
+                "enum.functions.doors",
+                "enum.functions.window",
+                "enum.functions.motion",
+                "enum.functions.szenen"
+            ],
+            "number1": ["enum.functions.temp", "enum.functions.hum"],
+            "number2": ["enum.functions.rain", "enum.functions.pressure"]
+        }
     },
     "objects": [],
     "instanceObjects": []
